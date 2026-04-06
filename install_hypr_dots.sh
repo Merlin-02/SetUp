@@ -52,14 +52,17 @@ echo "$GPU"
 GPU_PACKAGES=(mesa)
 
 if echo "$GPU" | grep -qi "NVIDIA"; then
+echo "🟩 NVIDIA detectado"
 GPU_PACKAGES=(nvidia nvidia-utils nvidia-settings)
 elif echo "$GPU" | grep -qi "Intel"; then
+echo "🟦 Intel detectado"
 GPU_PACKAGES=(mesa vulkan-intel)
 elif echo "$GPU" | grep -qi "AMD"; then
+echo "🟥 AMD detectado"
 GPU_PACKAGES=(mesa vulkan-radeon)
 fi
 
-# VM override
+# VM override (incluye KVM/Virtio)
 
 if [ "$VIRT" != "none" ]; then
 echo "🟨 VM detectada ($VIRT)"
@@ -138,19 +141,28 @@ fi
 echo "💾 Backup configs..."
 
 mkdir -p "$HOME/.backup_dots"
-cp -r "$HOME/.config" "$HOME/.backup_dots/" 2>/dev/null || true
-cp -r "$HOME/.local" "$HOME/.backup_dots/" 2>/dev/null || true
+
+[ -d "$HOME/.config" ] && cp -r "$HOME/.config" "$HOME/.backup_dots/" || true
+[ -d "$HOME/.local" ] && cp -r "$HOME/.local" "$HOME/.backup_dots/" || true
 
 # =========================
 
-# COPIAR DOTFILES
+# COPIAR DOTFILES (FIX)
 
 # =========================
 
 echo "⚙️ Aplicando dotfiles..."
 
+mkdir -p "$HOME/.config"
+mkdir -p "$HOME/.local"
+
+if [ -d ".config" ]; then
 cp -r .config/* "$HOME/.config/"
-cp -r .local/* "$HOME/.local/" 2>/dev/null || true
+fi
+
+if [ -d ".local" ]; then
+cp -r .local/* "$HOME/.local/"
+fi
 
 # =========================
 
@@ -184,7 +196,11 @@ fi
 echo "🔤 Instalando fuentes..."
 
 mkdir -p "$HOME/.local/share/fonts"
-cp -r .local/share/fonts/* "$HOME/.local/share/fonts/" 2>/dev/null || true
+
+if [ -d ".local/share/fonts" ]; then
+cp -r .local/share/fonts/* "$HOME/.local/share/fonts/"
+fi
+
 fc-cache -fv
 
 # =========================
