@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🚀 Hyprland Smart Installer (imperative-dots)"
+echo "🚀 Hyprland FULL Smart Installer (imperative-dots)"
 
 REPO_URL="https://github.com/ilyamiro/imperative-dots.git"
 INSTALL_DIR="$HOME/imperative-dots"
@@ -47,38 +47,35 @@ echo "🎮 Detectando GPU..."
 GPU=$(lspci | grep -E "VGA|3D" || true)
 echo "$GPU"
 
-# Fallback SIEMPRE válido
+# Fallback seguro
 
 GPU_PACKAGES=(mesa)
 
 if echo "$GPU" | grep -qi "NVIDIA"; then
-echo "🟩 NVIDIA detectado"
 GPU_PACKAGES=(nvidia nvidia-utils nvidia-settings)
 elif echo "$GPU" | grep -qi "Intel"; then
-echo "🟦 Intel detectado"
 GPU_PACKAGES=(mesa vulkan-intel)
 elif echo "$GPU" | grep -qi "AMD"; then
-echo "🟥 AMD detectado"
 GPU_PACKAGES=(mesa vulkan-radeon)
 fi
 
 # VM override
 
 if [ "$VIRT" != "none" ]; then
-echo "🟨 Entorno virtual detectado ($VIRT)"
+echo "🟨 VM detectada ($VIRT)"
 GPU_PACKAGES=(mesa)
 fi
 
-echo "Paquetes GPU: ${GPU_PACKAGES[*]}"
+echo "GPU packages: ${GPU_PACKAGES[*]}"
 
 # =========================
 
-# LISTA DE PAQUETES (ARRAY)
+# PAQUETES BASE
 
 # =========================
 
 PACKAGES=(
-git base-devel
+git base-devel zsh
 hyprland waybar rofi dunst kitty swww
 swaync cava neovim
 networkmanager bluez bluez-utils
@@ -92,7 +89,7 @@ sddm qt5-graphicaleffects qt5-quickcontrols2 qt5-svg
 
 # =========================
 
-# INSTALACIÓN SEGURA
+# INSTALAR TODO
 
 # =========================
 
@@ -122,7 +119,7 @@ fi
 
 # =========================
 
-echo "📥 Clonando repo..."
+echo "📥 Clonando/actualizando repo..."
 
 if [ -d "$INSTALL_DIR" ]; then
 cd "$INSTALL_DIR"
@@ -138,13 +135,15 @@ fi
 
 # =========================
 
+echo "💾 Backup configs..."
+
 mkdir -p "$HOME/.backup_dots"
 cp -r "$HOME/.config" "$HOME/.backup_dots/" 2>/dev/null || true
 cp -r "$HOME/.local" "$HOME/.backup_dots/" 2>/dev/null || true
 
 # =========================
 
-# COPIAR CONFIG
+# COPIAR DOTFILES
 
 # =========================
 
@@ -155,11 +154,14 @@ cp -r .local/* "$HOME/.local/" 2>/dev/null || true
 
 # =========================
 
-# PERMISOS
+# PERMISOS SCRIPTS
 
 # =========================
 
+echo "🔧 Ajustando permisos..."
+
 chmod +x "$HOME/.config/hypr/scripts/"*.sh 2>/dev/null || true
+find "$HOME/.config/hypr/scripts/" -type f -name "*.sh" -exec chmod +x {} ; 2>/dev/null || true
 
 # =========================
 
@@ -168,6 +170,7 @@ chmod +x "$HOME/.config/hypr/scripts/"*.sh 2>/dev/null || true
 # =========================
 
 if [ -d "utils/bin" ]; then
+echo "⚙️ Instalando binarios..."
 chmod +x utils/bin/*
 sudo cp utils/bin/* /usr/local/bin/
 fi
@@ -178,9 +181,27 @@ fi
 
 # =========================
 
+echo "🔤 Instalando fuentes..."
+
 mkdir -p "$HOME/.local/share/fonts"
 cp -r .local/share/fonts/* "$HOME/.local/share/fonts/" 2>/dev/null || true
 fc-cache -fv
+
+# =========================
+
+# ZSH
+
+# =========================
+
+echo "🐚 Configurando ZSH..."
+
+if [ -f ".config/zsh/.zshrc" ]; then
+cp .config/zsh/.zshrc "$HOME/.zshrc"
+fi
+
+if [ "$SHELL" != "/bin/zsh" ]; then
+chsh -s /bin/zsh
+fi
 
 # =========================
 
@@ -189,13 +210,48 @@ fc-cache -fv
 # =========================
 
 if [ -d ".config/sddm/themes/matugen-minimal" ]; then
+echo "🎨 Configurando SDDM..."
+
+```
 sudo mkdir -p /usr/share/sddm/themes
 sudo cp -r .config/sddm/themes/matugen-minimal /usr/share/sddm/themes/
 
-```
 echo -e "[Theme]\nCurrent=matugen-minimal" | sudo tee /etc/sddm.conf
 ```
 
+fi
+
+# =========================
+
+# KEYBINDS
+
+# =========================
+
+echo "🎹 Configurando teclas multimedia..."
+
+cat >> "$HOME/.config/hypr/hyprland.conf" <<EOF
+
+# === MEDIA KEYS ===
+
+bind = , XF86AudioRaiseVolume, exec, pamixer -i 5
+bind = , XF86AudioLowerVolume, exec, pamixer -d 5
+bind = , XF86AudioMute, exec, pamixer -t
+
+bind = , XF86AudioPlay, exec, playerctl play-pause
+bind = , XF86AudioNext, exec, playerctl next
+bind = , XF86AudioPrev, exec, playerctl previous
+EOF
+
+# Laptop brillo
+
+if [ "$LAPTOP" = true ]; then
+cat >> "$HOME/.config/hypr/hyprland.conf" <<EOF
+
+# === BRIGHTNESS ===
+
+bind = , XF86MonBrightnessUp, exec, brightnessctl set +10%
+bind = , XF86MonBrightnessDown, exec, brightnessctl set 10%-
+EOF
 fi
 
 # =========================
@@ -205,8 +261,12 @@ fi
 # =========================
 
 echo ""
-echo "✅ Instalación completada sin errores"
-echo "👉 Reinicia:"
+echo "✅ Instalación COMPLETA finalizada"
+echo "🧠 Entorno:"
+echo "   Virtualización: $VIRT"
+echo "   Laptop: $LAPTOP"
+echo ""
+echo "👉 Reinicia el sistema:"
 echo "   reboot"
 echo ""
 
